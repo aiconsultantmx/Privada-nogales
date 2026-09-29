@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Transparencia · Privada Nogales</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  :root{
+    --bg:#F5F1EB; --card:#FEFDF9; --ink:#1F332C; --green:#2F5B4A;
+    --terra:#D97B57; --terra-text:#D2693F; --muted:#6B7A72; --track:#E6E2DA;
+    --note-bg:#F9F2DC; --note-edge:#D4A84B; --note-text:#6B5A1E;
+    --ok-bg:#EAF2EC; --ok-edge:#2F5B4A; --ok-text:#2F5B4A;
+  }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--ink); font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;
+        padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px); }
+  .wrap{ max-width:1120px; margin:0 auto; padding:26px 32px 60px; }
+  .eyebrow{ font-size:12px; font-weight:700; letter-spacing:.2em; color:var(--terra-text); text-transform:uppercase; }
+  .updated{ font-size:12.5px; color:var(--muted); margin-top:6px; margin-bottom:18px; }
+  .head{ display:flex; justify-content:space-between; align-items:flex-end; gap:24px; flex-wrap:wrap; padding-bottom:34px; border-bottom:1px solid var(--ink); }
+  h1{ font-family:'Newsreader',serif; font-weight:500; font-size:clamp(52px,9vw,92px); line-height:1; letter-spacing:-.02em; margin:6px 0 18px; color:var(--ink); }
+  h1 em{ font-style:italic; font-weight:400; color:var(--green); }
+  .lede{ max-width:560px; font-size:17px; line-height:1.55; color:var(--muted); margin:0; }
+  .filter label{ display:block; font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; margin-bottom:8px; }
+  .filter select{ font-family:inherit; font-size:16px; color:var(--ink); background:var(--bg); border:1px solid var(--ink); border-radius:0; padding:14px 16px; min-width:190px; }
+  nav.tabs{ display:flex; gap:10px; margin:30px 0 18px; flex-wrap:wrap; align-items:center; }
+  nav.tabs button{ font-family:inherit; font-size:16px; color:var(--ink); background:transparent; border:1px solid var(--ink); border-radius:0; padding:12px 24px; cursor:pointer; }
+  nav.tabs button.on{ background:var(--ink); color:var(--card); }
+  .sync{ margin-left:auto; display:flex; align-items:center; gap:10px; font-size:13px; color:var(--muted); }
+  .sync button{ font-family:inherit; font-size:13px; background:transparent; border:1px solid var(--muted); color:var(--ink); padding:7px 14px; cursor:pointer; }
+  .sync .dot{ width:8px; height:8px; border-radius:50%; display:inline-block; }
+  .dot.live{ background:var(--green); }
+  .dot.stale{ background:var(--terra); }
+  .panel{ display:none; }
+  .panel.on{ display:block; }
+  .kpis{ display:grid; grid-template-columns:repeat(3,1fr); border:1px solid var(--ink); }
+  .kpi{ padding:28px 30px 24px; border-right:1px solid var(--ink); }
+  .kpi:last-child{ border-right:none; }
+  .kpi.hl{ background:var(--green); color:var(--card); }
+  .kpi label{ display:block; font-size:12.5px; letter-spacing:.16em; text-transform:uppercase; margin-bottom:14px; }
+  .kpi .v{ font-family:'Newsreader',serif; font-size:52px; line-height:1.05; }
+  .kpi .s{ font-size:12.5px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); margin-top:14px; }
+  .kpi.hl .s{ color:var(--card); }
+  .note{ background:var(--note-bg); border-left:3px solid var(--note-edge); color:var(--note-text); font-size:14.5px; padding:16px 22px; margin:22px 0; line-height:1.5; }
+  .note.ok{ background:var(--ok-bg); border-left-color:var(--ok-edge); color:var(--ok-text); }
+  .grid{ display:grid; grid-template-columns:1.9fr 1fr; gap:24px; }
+  .card{ background:var(--card); border:1px solid var(--ink); padding:28px 30px; }
+  .card-head{ display:flex; align-items:baseline; gap:12px; margin-bottom:22px; flex-wrap:wrap; }
+  .num{ font-family:'Newsreader',serif; font-style:italic; font-size:22px; color:var(--terra-text); font-variant-numeric:oldstyle-nums; }
+  .card h2{ font-family:'Newsreader',serif; font-weight:500; font-size:31px; margin:0; }
+  .card .aside{ margin-left:auto; color:var(--muted); font-size:15px; }
+  .chart{ position:relative; height:300px; }
+  .legend{ display:flex; gap:22px; margin-top:16px; font-size:14px; color:var(--muted); }
+  .legend i{ display:inline-block; width:11px; height:11px; margin-right:8px; background:var(--green); }
+  .bar-row{ margin-bottom:22px; }
+  .bar-row .l{ display:flex; justify-content:space-between; align-items:baseline; gap:14px; font-size:15.5px; margin-bottom:9px; }
+  .bar-row .l span{ flex:1 1 auto; min-width:0; }
+  .bar-row .l b{ font-weight:700; flex:0 0 auto; white-space:nowrap; }
+  .track{ height:11px; background:var(--track); }
+  .fill{ height:100%; background:var(--terra); }
+  table{ width:100%; border-collapse:collapse; font-size:15px; }
+  th{ text-align:left; font-size:11.5px; letter-spacing:.14em; text-transform:uppercase; font-weight:700; padding:0 0 12px; border-bottom:1px solid var(--ink); }
+  td{ padding:13px 0; border-bottom:1px solid var(--track); }
+  th.r, td.r{ text-align:right; }
+  .full{ margin-top:24px; }
+  .empty{ font-size:15.5px; line-height:1.6; color:var(--muted); }
+  .empty b{ color:var(--ink); font-weight:700; }
+  .acts{ display:grid; grid-template-columns:1fr 1fr; column-gap:48px; }
+  .act{ display:flex; gap:22px; align-items:baseline; padding:20px 0 16px; border-bottom:1px solid var(--track); font-size:16px; }
+  .act .num{ min-width:30px; }
+  .foot{ display:flex; justify-content:space-between; gap:20px; flex-wrap:wrap; margin-top:34px; padding-top:14px; border-top:1px solid var(--track); font-size:13px; color:var(--muted); }
+  .skel{ height:1em; background:var(--track); display:inline-block; border-radius:2px; width:70px; }
+  @media (max-width:820px){
+    .grid{ grid-template-columns:1fr; }
+    .kpis{ grid-template-columns:1fr; }
+    .kpi{ border-right:none; border-bottom:1px solid var(--ink); }
+    .kpi:last-child{ border-bottom:none; }
+    .acts{ grid-template-columns:1fr; }
+    .sync{ margin-left:0; width:100%; justify-content:space-between; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="eyebrow">Portal de transparencia · Privada Nogales</div>
+  <div class="updated" id="updatedAt">Última actualización: —</div>
+  <div class="head">
+    <div>
+      <h1>Cuentas <em>claras.</em></h1>
+      <p class="lede">Ingresos, egresos, cumplimiento de cuotas y acciones pendientes en una vista privada, navegable y conectada al spreadsheet de administración.</p>
+    </div>
+    <div class="filter"><label for="year">Año</label><select id="year"></select></div>
+  </div>
+
+  <nav class="tabs" id="tabs">
+    <button data-p="resumen" class="on">Resumen</button>
+    <button data-p="cuotas">Cuotas</button>
+    <button data-p="egresos">Egresos</button>
+    <button data-p="pendientes">Pendientes</button>
+    <span class="sync" id="syncBar">
+      <span class="dot stale" id="syncDot"></span>
+      <span id="syncText">Conectando con Google Sheets…</span>
+      <button id="syncBtn">Actualizar</button>
+    </span>
+  </nav>
+
+  <div class="panel on" id="p-resumen">
+    <div id="liveNote"></div>
+    <div class="kpis">
+      <div class="kpi"><label>Ingresos del periodo</label><div class="v" id="kTotal"><span class="skel"></span></div><div class="s" id="kTotalS">—</div></div>
+      <div class="kpi hl"><label>Promedio mensual</label><div class="v" id="kAvg"><span class="skel"></span></div><div class="s">Ingresos por mes</div></div>
+      <div class="kpi"><label>Unidades</label><div class="v" id="kUnits">—</div><div class="s">Casas, terrenos y construcciones</div></div>
+    </div>
+    <div class="note">El flujo mensual y la composición de viviendas se leen en vivo de la hoja "Ingresos". El gasto principal y las acciones pendientes son de una lectura anterior, porque el conector solo puede traer una hoja del archivo a la vez.</div>
+
+    <div class="grid">
+      <div class="card">
+        <div class="card-head"><span class="num">01</span><h2 id="flowTitle">Flujo mensual</h2><span class="aside" id="flowSub"></span></div>
+        <div class="chart"><canvas id="flow" role="img" aria-label="Ingresos totales por mes del año seleccionado"></canvas></div>
+        <div class="legend"><span><i></i>Ingresos</span></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="num">02</span><h2>Gasto principal</h2><span class="aside">última lectura</span></div>
+        <div id="spend"></div>
+      </div>
+    </div>
+
+    <div class="card full">
+      <div class="card-head"><h2>Composición de viviendas</h2><span class="aside" id="unitsAside">leyendo del archivo…</span></div>
+      <table>
+        <thead><tr><th>Calle</th><th class="r">Casas</th><th class="r">Terrenos</th><th class="r">En construcción</th><th class="r">Total</th></tr></thead>
+        <tbody id="unitsBody"><tr><td colspan="5" class="empty">Leyendo del archivo…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel" id="p-cuotas">
+    <div class="card">
+      <div class="card-head"><span class="num">03</span><h2>Deuda de cuotas por vivienda</h2><span class="aside" id="debtAside">calculando…</span></div>
+      <div class="note" id="debtNote" style="margin-top:0"></div>
+      <table>
+        <thead><tr><th>Vivienda</th><th class="r">Adeudo estimado</th></tr></thead>
+        <tbody id="debtBody"><tr><td colspan="2" class="empty">Calculando…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="panel" id="p-egresos">
+    <div class="card">
+      <div class="card-head"><span class="num">04</span><h2>Detalle de egresos</h2><span class="aside">última lectura</span></div>
+      <p class="empty"><b>Solo se conocen los seis conceptos principales</b> (visibles en el Resumen). El conector exporta una hoja a la vez, así que la hoja de Egresos no se actualiza en vivo con esta conexión; el detalle completo por movimiento requiere leerla directamente.</p>
+    </div>
+  </div>
+
+  <div class="panel" id="p-pendientes">
+    <div class="card">
+      <div class="card-head"><span class="num">05</span><h2>Acciones pendientes</h2><span class="aside">28 acciones · última lectura</span></div>
+      <div class="note" style="margin-top:0">El archivo todavía no contiene costo ni estatus para estas acciones. Se muestran como pendientes de clasificación. Aquí aparecen las 18 que se leen en la última captura; faltan 10.</div>
+      <div class="acts" id="acts"></div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span>Fuente: hoja "Ingresos" del spreadsheet, vía tu Google Drive conectado · Los nombres de titulares no se muestran.</span>
+    <span id="footTime">—</span>
+  </div>
+</div>
+
+<script>
+const FILE_ID = '1wBkUDCnA2S6EpOqjwFwJnrDGGWsMDMQYpjfYEmioXXk';
+const fmt = n => '$' + Math.round(n).toLocaleString('es-MX');
+
+// Respaldo si la conexión en vivo no está disponible (última lectura conocida)
+const fallback = {
+  months: [
+    ['2023','Oct',72000],['2023','Nov',71100],['2023','Dic',71950],
+    ['2024','Ene',69900],['2024','Feb',69900],['2024','Mar',69700],['2024','Abr',71350],['2024','May',70800],['2024','Jun',71300],['2024','Jul',71750],['2024','Ago',73480],['2024','Sep',74350],['2024','Oct',73550],['2024','Nov',70400],['2024','Dic',71150],
+    ['2025','Ene',70250],['2025','Feb',70200],['2025','Mar',71050],['2025','Abr',71350],['2025','May',67050],['2025','Jun',72350],['2025','Jul',72550],['2025','Ago',71650],['2025','Sep',71800],['2025','Oct',68850],['2025','Nov',67050],['2025','Dic',62650],
+    ['2026','Ene',64800],['2026','Feb',64650],['2026','Mar',65850],['2026','Abr',63000],['2026','May',64585],['2026','Jun',63200],['2026','Jul',59750],['2026','Ago',52200],['2026','Sep',26100]
+  ],
+  units: { Olmos:{casa:16,terreno:0,construccion:0}, Roble:{casa:22,terreno:4,construccion:3}, Sauce:{casa:7,terreno:0,construccion:0} }
+};
+
+let chart;
+
+function monthMeta(raw){
+  const map = {ene:'Ene',feb:'Feb',mar:'Mar',abr:'Abr',may:'May',jun:'Jun',jul:'Jul',ago:'Ago',sep:'Sep',oct:'Oct',nov:'Nov',dic:'Dic'};
+  const lower = raw.trim().toLowerCase();
+  const key3 = lower.slice(0,3);
+  const label = map[key3] || raw.slice(0,3);
+  let year = (raw.match(/(\d{4})/) || [])[1];
+  if(!year){ const y2 = raw.match(/(\d{2})\s*$/); year = y2 ? ('20'+y2[1]) : null; }
+  return { label, year };
+}
+
+function parseCsv(text){
+  const rows = [];
+  let row = [], field = '', inQ = false;
+  for(let i=0;i<text.length;i++){
+    const c = text[i];
+    if(inQ){
+      if(c === '"'){ if(text[i+1] === '"'){ field+='"'; i++; } else inQ = false; }
+      else field += c;
+    } else {
+      if(c === '"') inQ = true;
+      else if(c === ',') { row.push(field); field=''; }
+      else if(c === '\r'){ /* skip */ }
+      else if(c === '\n'){ row.push(field); rows.push(row); row=[]; field=''; }
+      else field += c;
+    }
+  }
+  if(field.length || row.length){ row.push(field); rows.push(row); }
+  return rows;
+}
+
+function money(v){
+  if(v == null) return null;
+  const s = String(v).replace(/\$|,/g,'').trim();
+  if(!s || s === '-' ) return null;
+  const n = parseFloat(s);
+  return isNaN(n) ? null : n;
+}
+
+function buildFromCsv(csvText){
+  const rows = parseCsv(csvText);
+  const headerIdx = rows.findIndex(r => r[0] === 'Tipo');
+  if(headerIdx === -1) throw new Error('no header');
+  const header = rows[headerIdx];
+  const monthCols = header.slice(4);
+  const totalRow = rows.find(r => r[2] === 'Total');
+  if(!totalRow) throw new Error('no total row');
+  const totals = totalRow.slice(4, 4 + monthCols.length);
+
+  const months = [];
+  monthCols.forEach((raw, i) => {
+    const v = money(totals[i]);
+    if(v == null || !raw) return;
+    const { label, year } = monthMeta(raw);
+    if(!year) return;
+    months.push([year, label, v]);
+  });
+
+  const units = {};
+  const houses = [];
+  for(let i = headerIdx+1; i < rows.length; i++){
+    const r = rows[i];
+    if(!r[1] || r[2] === 'Total' || r[1] === '') continue;
+    const calle = r[1].trim();
+    if(!calle) continue;
+    const tipo = (r[0] || '').trim().toLowerCase();
+    if(!units[calle]) units[calle] = { casa:0, terreno:0, construccion:0 };
+    if(tipo.startsWith('casa')) units[calle].casa++;
+    else if(tipo.startsWith('terreno')) units[calle].terreno++;
+    else if(tipo.startsWith('constru')) units[calle].construccion++;
+    houses.push({ calle, numero: (r[2]||'').trim(), cells: r.slice(4, 4 + monthCols.length) });
+  }
+  return { months, units, houses, monthCols };
+}
+
+const MONTH_NUM = { ene:0, feb:1, mar:2, abr:3, may:4, jun:5, jul:6, ago:7, sep:8, oct:9, nov:10, dic:11 };
+
+function computeDebts(houses, monthCols){
+  const now = new Date();
+  const todayYear = String(now.getFullYear());
+  const todayMonthNum = now.getMonth();
+  const todayDay = now.getDate();
+
+  let currentIdx = -1;
+  monthCols.forEach((raw, i) => {
+    if(!raw) return;
+    const { label, year } = monthMeta(raw);
+    const mnum = MONTH_NUM[label.toLowerCase()];
+    if(year === todayYear && mnum === todayMonthNum) currentIdx = i;
+  });
+  if(currentIdx === -1) return { list: [], currentIdx, todayDay };
+
+  const currentMonthDebt = todayDay <= 15 ? 1350 : 1500;
+
+  const list = houses.map(h => {
+    let total = 0;
+    for(let i = 0; i <= currentIdx; i++){
+      const raw = (h.cells[i] || '').trim();
+      const isBlank = raw === '';
+      if(!isBlank) continue;
+      if(i === currentIdx) total += currentMonthDebt;
+      else {
+        const monthsOverdue = currentIdx - i;
+        total += 1650 + 100 * monthsOverdue;
+      }
+    }
+    return { calle: h.calle, numero: h.numero, total };
+  }).filter(h => h.total > 0);
+
+  list.sort((a,b) => b.total - a.total);
+  return { list, currentIdx, todayDay };
+}
+
+function renderDebts(houses, monthCols){
+  const { list, currentIdx, todayDay } = computeDebts(houses, monthCols);
+  const body = document.getElementById('debtBody');
+  const aside = document.getElementById('debtAside');
+  const note = document.getElementById('debtNote');
+
+  if(currentIdx === -1){
+    body.innerHTML = '<tr><td colspan="2" class="empty">No se encontró el mes en curso en el archivo.</td></tr>';
+    aside.textContent = '';
+    return;
+  }
+
+  aside.textContent = list.length + (list.length === 1 ? ' vivienda con adeudo' : ' viviendas con adeudo');
+  note.innerHTML = 'Regla aplicada: mes en curso sin pago capturado = $1,350 (día 1–15) o $1,500 (día 16 en adelante); cada mes anterior sin pago = $1,650, más $100 por cada mes que sigue vencido hasta hoy. Una celda con cualquier texto capturado (incluye bonificaciones) cuenta como pagada. Meses futuros no generan adeudo.';
+
+  if(!list.length){
+    body.innerHTML = '<tr><td colspan="2" class="empty">Ninguna vivienda tiene adeudo con esta regla.</td></tr>';
+    return;
+  }
+  body.innerHTML = list.map(h => `<tr><td>${h.calle} ${h.numero}</td><td class="r">${fmt(h.total)}</td></tr>`).join('');
+}
+
+function renderUnits(units){
+  const body = document.getElementById('unitsBody');
+  const streets = Object.keys(units);
+  if(!streets.length){ body.innerHTML = '<tr><td colspan="5" class="empty">Sin datos.</td></tr>'; return; }
+  let totalAll = 0;
+  body.innerHTML = streets.map(s => {
+    const u = units[s]; const tot = u.casa+u.terreno+u.construccion; totalAll += tot;
+    return `<tr><td>${s}</td><td class="r">${u.casa}</td><td class="r">${u.terreno}</td><td class="r">${u.construccion}</td><td class="r">${tot}</td></tr>`;
+  }).join('');
+  document.getElementById('kUnits').textContent = totalAll;
+  document.getElementById('unitsAside').textContent = totalAll + ' unidades en el archivo';
+}
+
+function groupByYear(months){
+  const data = {};
+  months.forEach(([year, label, val]) => {
+    if(!data[year]) data[year] = { months: [], vals: [] };
+    data[year].months.push(label);
+    data[year].vals.push(val);
+  });
+  return data;
+}
+
+function renderYearSelect(data){
+  const sel = document.getElementById('year');
+  const prev = sel.value;
+  sel.innerHTML = '';
+  Object.keys(data).sort().reverse().forEach(y => {
+    const o = document.createElement('option'); o.value = y; o.textContent = y; sel.appendChild(o);
+  });
+  if(prev && data[prev]) sel.value = prev;
+}
+
+function draw(data){
+  const y = document.getElementById('year').value, d = data[y];
+  if(!d) return;
+  const total = d.vals.reduce((a,b)=>a+b,0);
+  document.getElementById('kTotal').textContent = fmt(total);
+  document.getElementById('kTotalS').textContent = d.vals.length + ' meses con dato';
+  document.getElementById('kAvg').textContent = fmt(total / d.vals.length);
+  document.getElementById('flowTitle').textContent = 'Flujo mensual ' + y;
+  document.getElementById('flowSub').textContent = 'Totales globales · ' + d.months[0] + '–' + d.months[d.months.length-1];
+  if(!chart){
+    chart = new Chart(document.getElementById('flow'), {
+      type:'bar',
+      data:{ labels:d.months, datasets:[{ data:d.vals, backgroundColor:'#2F5B4A', borderRadius:0, categoryPercentage:.8, barPercentage:.7 }] },
+      options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+        scales:{ x:{grid:{display:false},border:{color:'#1F332C'},ticks:{color:'#1F332C'}}, y:{beginAtZero:true,grid:{color:'#E6E2DA'},border:{display:false},ticks:{color:'#6B7A72',callback:v=>'$'+(v/1000)+'k'}} } }
+    });
+  } else {
+    chart.data.labels = d.months; chart.data.datasets[0].data = d.vals; chart.update();
+  }
+}
+
+function renderAll(months, units, houses, monthCols){
+  const data = groupByYear(months);
+  renderYearSelect(data);
+  draw(data);
+  renderUnits(units);
+  if(houses && monthCols) renderDebts(houses, monthCols);
+  document.getElementById('year').onchange = () => draw(data);
+}
+
+function setSync(state, text){
+  const dot = document.getElementById('syncDot');
+  dot.className = 'dot ' + (state === 'live' ? 'live' : 'stale');
+  document.getElementById('syncText').textContent = text;
+}
+
+function showLiveNote(kind, msg){
+  const el = document.getElementById('liveNote');
+  el.innerHTML = `<div class="note ${kind==='ok' ? 'ok' : ''}">${msg}</div>`;
+}
+
+function stampUpdatedAt(){
+  const now = new Date();
+  const txt = now.toLocaleString('es-MX', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  document.getElementById('updatedAt').textContent = 'Última actualización: ' + txt;
+}
+
+function showDebtsUnavailable(){
+  document.getElementById('debtAside').textContent = '';
+  document.getElementById('debtNote').innerHTML = '';
+  document.getElementById('debtBody').innerHTML = '<tr><td colspan="2" class="empty">El adeudo por vivienda necesita la lectura en vivo del archivo — no hay una versión guardada de este cálculo. Da clic en "Actualizar" para reintentar la conexión.</td></tr>';
+}
+
+async function loadLive(){
+  setSync('stale', 'Conectando con Google Sheets…');
+  let mcp;
+  try { mcp = await claude.use('mcp'); } catch(e) { mcp = null; }
+  if(!mcp){
+    renderAll(fallback.months, fallback.units);
+    showDebtsUnavailable();
+    setSync('stale', 'Conexión no disponible en esta vista');
+    showLiveNote('warn', 'No se pudo activar la conexión con Google Sheets en esta vista. Mostrando la última lectura guardada.');
+    document.getElementById('footTime').textContent = 'Última lectura guardada';
+    stampUpdatedAt();
+    return;
+  }
+  try {
+    const server = await mcp.server('Google Drive');
+    const res = await server.download_file_content({ fileId: FILE_ID, exportMimeType: 'text/csv' });
+    const b64 = (res && res.content) || '';
+    const bin = atob(b64.replace(/\s/g,''));
+    const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+    const csvText = new TextDecoder('utf-8').decode(bytes);
+    const { months, units, houses, monthCols } = buildFromCsv(csvText);
+    if(!months.length) throw { code: 'empty' };
+    renderAll(months, units, houses, monthCols);
+    setSync('live', 'Conectado a Google Sheets');
+    document.getElementById('liveNote').innerHTML = '';
+    document.getElementById('footTime').textContent = 'Actualizado ahora';
+    stampUpdatedAt();
+  } catch(err){
+    renderAll(fallback.months, fallback.units);
+    showDebtsUnavailable();
+    const code = err && err.code;
+    let msg = 'No se pudo leer el spreadsheet en vivo. Mostrando la última lectura guardada.';
+    if(code === 'needs_reauth') msg = 'Tu conexión de Google Drive expiró. Reconéctala en Ajustes → Conectores y vuelve a intentar.';
+    else if(code === 'server_not_connected') msg = 'No tienes Google Drive conectado. Agrégalo en Ajustes → Conectores para ver datos en vivo.';
+    else if(code === 'not_in_manifest' || code === 'consent_required') msg = 'No autorizaste esta conexión para esta página. Actualiza para volver a pedir permiso.';
+    else if(code === 'selection_required') msg = 'Tienes más de una cuenta de Google Drive conectada; elige una cuando se te pida y vuelve a intentar.';
+    setSync('stale', 'Sin conexión en vivo');
+    showLiveNote('warn', msg);
+    document.getElementById('footTime').textContent = 'Última lectura guardada';
+    stampUpdatedAt();
+  }
+}
+
+const spend = [
+  ['Servicio de vigilancia PESAY',1102500],
+  ['Restauración del Parque y Calles',203251],
+  ['Mantenimiento Alberca',145010],
+  ['Mantenimiento y limpieza áreas verdes',133892],
+  ['Mejoras en Palapa, Parque y Alberca',60069],
+  ['Servicio de Administración ABS',60000]
+];
+document.getElementById('spend').innerHTML = spend.map(s =>
+  `<div class="bar-row"><div class="l"><span>${s[0]}</span><b>${fmt(s[1])}</b></div><div class="track"><div class="fill" style="width:${(s[1]/spend[0][1]*100).toFixed(1)}%"></div></div></div>`
+).join('');
+
+const acts = [
+  'Creación de AC','Creación de cuenta bancaria de AC','Revisión de sistema de riego Rainbird','Automatización de entrada',
+  'Colocación de pasto en juego del parque','Colocación de piso caído en caseta','Focos fundidos en palapa','Árboles en banquetas seleccionadas',
+  'Pintar base de cancha de futbol','Restaurar pasto sintético de cancha de futbol','Limpiar jardineras','Limpiar terreno Roble 100, Roble 117 y Roble 136',
+  'Colocación correcta de tapas de registro de CFE y de luminarias','Arreglar muro del fondo de calle Roble','Pintar puertas de baños palapa y puerta de la bodega','Arreglar WC de baño de palapa',
+  'Arreglar veneciano de alberca','Cambiar piso de zona alberca'
+];
+document.getElementById('acts').innerHTML = acts.map((a,i) =>
+  `<div class="act"><span class="num">${String(i+1).padStart(2,'0')}</span><span>${a}</span></div>`
+).join('');
+
+document.querySelectorAll('#tabs button[data-p]').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('#tabs button[data-p]').forEach(x => x.classList.remove('on'));
+  document.querySelectorAll('.panel').forEach(x => x.classList.remove('on'));
+  b.classList.add('on');
+  document.getElementById('p-' + b.dataset.p).classList.add('on');
+}));
+
+document.getElementById('syncBtn').addEventListener('click', loadLive);
+
+loadLive();
+</script>
+</body>
+</html>
